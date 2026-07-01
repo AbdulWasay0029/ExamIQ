@@ -29,7 +29,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   onAnalyze,
   onInstantDemo,
 }) => {
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState("Computer Networks");
   const [examType, setExamType] = useState<ExamMode>("Mid 1");
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -94,7 +94,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
     setFiles((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const canAnalyze = subject.trim().length > 0 && files.length > 0;
+  const canAnalyze = true;
 
   const handleTriggerDemo = async () => {
     setIsSeeding(true);
@@ -109,6 +109,15 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
       onInstantDemo();
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleLaunchClick = () => {
+    if (files.length === 0) {
+      toast("No files uploaded: Launching Pre-Clustered Computer Networks Engine!", { icon: "⚡" });
+      handleTriggerDemo();
+    } else {
+      onAnalyze(files, subject || "Computer Networks", examType);
     }
   };
 
@@ -246,13 +255,8 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
           {/* Primary Action Button */}
           <button
             type="button"
-            disabled={!canAnalyze}
-            onClick={() => onAnalyze(files, subject, examType)}
-            className={`w-full py-5 px-8 rounded-2xl font-black text-base uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-3 shadow-2xl ${
-              canAnalyze
-                ? "bg-gradient-to-r from-[#6366f1] via-[#4f46e5] to-[#06b6d4] text-white hover:opacity-95 hover:scale-[1.003] shadow-[#6366f1]/30"
-                : "bg-[#1f2937] text-[#475569] border border-[#334155] cursor-not-allowed"
-            }`}
+            onClick={handleLaunchClick}
+            className="w-full py-5 px-8 rounded-2xl font-black text-base uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-3 shadow-2xl bg-gradient-to-r from-[#6366f1] via-[#4f46e5] to-[#06b6d4] text-white hover:opacity-95 hover:scale-[1.003] shadow-[#6366f1]/30"
           >
             <Sparkles className="w-6 h-6" />
             <span>Launch AI Exam Strategist Engine</span>
