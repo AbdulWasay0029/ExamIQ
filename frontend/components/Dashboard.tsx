@@ -69,43 +69,161 @@ export const Dashboard: React.FC<DashboardProps> = ({
         setMockData(res);
       } catch (err) {
         console.error("Mock paper load error:", err);
-        toast.error("Offline mode: Synthesizing standard college mock paper.");
-        setMockData({
-          status: "success",
-          subject: subject || "Computer Networks",
-          exam_type: examType,
-          paper_title: `${(subject || "Computer Networks").toUpperCase()} — ${examType.toUpperCase()} MOCK EXAMINATION`,
-          detected_pattern: `AI Auto-Detected Tier-1 College Pattern (${examType}) — Part A Compulsory + Part B Internal Choice (OR Pairs)`,
-          time_allowed: "90 Minutes",
-          max_marks: 30,
-          part_a: {
-            title: "PART A — Short Answer Compulsory Questions (5 × 2 = 10 Marks)",
-            questions: [
-              { id: 101, q_num: "1.a", text: "Define OSI reference model and list its 7 layers.", unit: 1, marks: 2 },
-              { id: 102, q_num: "1.b", text: "What is framing in Data Link Layer? Explain byte stuffing.", unit: 1, marks: 2 },
-              { id: 103, q_num: "1.c", text: "Define subnet masking and CIDR address blocks.", unit: 2, marks: 2 },
-              { id: 104, q_num: "1.d", text: "What is 3-way handshake in TCP?", unit: 2, marks: 2 },
-              { id: 105, q_num: "1.e", text: "Define iterative and recursive DNS resolutions.", unit: 3, marks: 2 },
-            ],
-          },
-          part_b: {
-            title: "PART B — Long Answer Questions (Answer one from each pair — Internal OR Choice)",
-            sections: [
-              {
-                unit: 1,
-                unit_label: "Unit 1 — Foundational Architecture & OSI/TCP Models",
-                q_option_1: { id: 201, q_num: "2", text: "Differentiate between OSI and TCP/IP reference models with layered architecture diagram.", unit: 1, marks: 5 },
-                q_option_2: { id: 202, q_num: "3", text: "Explain CSMA/CD access control protocol used in Ethernet networks.", unit: 1, marks: 5 },
-              },
-              {
-                unit: 2,
-                unit_label: "Unit 2 — Transport Layer & Handshaking Mechanisms",
-                q_option_1: { id: 203, q_num: "6", text: "Explain the working of TCP 3-way handshake with a neat sequence diagram.", unit: 2, marks: 5 },
-                q_option_2: { id: 204, q_num: "7", text: "Explain Go-Back-N and Selective Repeat ARQ sliding window protocols.", unit: 2, marks: 5 },
-              },
-            ],
-          },
-        });
+        toast.error("Offline mode: Synthesizing exact syllabus-aligned college mock paper.");
+        
+        const isMid2 = examType === "Mid 2";
+        const isSem = examType === "Semester Exam";
+        
+        let mockRes: MockPaperData;
+        if (isMid2) {
+          mockRes = {
+            status: "success",
+            subject: subject || "Computer Networks",
+            exam_type: examType,
+            paper_title: `${(subject || "Computer Networks").toUpperCase()} — MID EXAM 2 MOCK PAPER`,
+            detected_pattern: "AI Auto-Detected Syllabus Scope: Unit 3 (Part II - Advanced IP), Unit 4 (Routing), & Unit 5 (App Layer)",
+            time_allowed: "90 Minutes",
+            max_marks: 30,
+            part_a: {
+              title: "PART A — Short Answer Compulsory Questions (5 × 2 = 10 Marks)",
+              questions: [
+                { id: 301, q_num: "1.a", text: "Compare IPv4 and IPv6 packet header structure.", unit: 3, marks: 2 },
+                { id: 302, q_num: "1.b", text: "Define Address Resolution Protocol (ARP) and explain its role.", unit: 3, marks: 2 },
+                { id: 303, q_num: "1.c", text: "State the Bellman-Ford equation used in Distance Vector Routing.", unit: 4, marks: 2 },
+                { id: 304, q_num: "1.d", text: "What is the count-to-infinity problem in network routing?", unit: 4, marks: 2 },
+                { id: 305, q_num: "1.e", text: "Differentiate between iterative and recursive DNS resolutions.", unit: 5, marks: 2 },
+              ],
+            },
+            part_b: {
+              title: "PART B — Long Answer Questions (Answer one from each pair — Internal OR Choice)",
+              sections: [
+                {
+                  unit: 3,
+                  unit_label: "Unit 3 (Part II) — Advanced Network Layer & Protocols",
+                  q_option_1: { id: 311, q_num: "2", text: "Compare IPv4 and IPv6 header format improvements and explain IP fragmentation mechanics.", unit: 3, marks: 5 },
+                  q_option_2: { id: 312, q_num: "3", text: "Explain Address Resolution Protocol (ARP) packet exchange and ICMP error reporting.", unit: 3, marks: 5 },
+                },
+                {
+                  unit: 4,
+                  unit_label: "Unit 4 — Routing Algorithms & Congestion Control",
+                  q_option_1: { id: 313, q_num: "4", text: "Explain Distance Vector Routing algorithm and detail the count-to-infinity problem with split horizon fix.", unit: 4, marks: 5 },
+                  q_option_2: { id: 314, q_num: "5", text: "Explain Link State Routing algorithm (Dijkstra's Shortest Path First) with link-state packet flooding.", unit: 4, marks: 5 },
+                },
+                {
+                  unit: 5,
+                  unit_label: "Unit 5 — Application Layer Protocols & DNS",
+                  q_option_1: { id: 315, q_num: "6", text: "Explain Domain Name System (DNS) architecture and step-by-step resolution process.", unit: 5, marks: 5 },
+                  q_option_2: { id: 316, q_num: "7", text: "Compare HTTP/1.1 persistent pipelining versus HTTP/2 binary stream multiplexing.", unit: 5, marks: 5 },
+                },
+              ],
+            },
+          };
+        } else if (isSem) {
+          mockRes = {
+            status: "success",
+            subject: subject || "Computer Networks",
+            exam_type: examType,
+            paper_title: `${(subject || "Computer Networks").toUpperCase()} — SEMESTER FINAL EXAMINATION`,
+            detected_pattern: "AI Auto-Detected Full Syllabus Evaluation across Units 1 through 5",
+            time_allowed: "180 Minutes",
+            max_marks: 70,
+            part_a: {
+              title: "PART A — Short Answer Compulsory Questions (10 × 2 = 20 Marks)",
+              questions: [
+                { id: 401, q_num: "1.a", text: "Define OSI reference model and list its 7 functional layers.", unit: 1, marks: 2 },
+                { id: 402, q_num: "1.b", text: "Explain framing and byte stuffing in Data Link Layer.", unit: 1, marks: 2 },
+                { id: 403, q_num: "1.c", text: "What is the primary purpose of TCP 3-way handshake?", unit: 2, marks: 2 },
+                { id: 404, q_num: "1.d", text: "Define flow control and explain sliding window concept.", unit: 2, marks: 2 },
+                { id: 405, q_num: "1.e", text: "Define Classless Inter-Domain Routing (CIDR) notation.", unit: 3, marks: 2 },
+                { id: 406, q_num: "1.f", text: "Compare IPv4 and IPv6 header sizes.", unit: 3, marks: 2 },
+                { id: 407, q_num: "1.g", text: "State the Bellman-Ford equation for routing.", unit: 4, marks: 2 },
+                { id: 408, q_num: "1.h", text: "What is OSPF and link state flooding?", unit: 4, marks: 2 },
+                { id: 409, q_num: "1.i", text: "Differentiate between iterative and recursive DNS resolution.", unit: 5, marks: 2 },
+                { id: 410, q_num: "1.j", text: "What is HTTP/2 stream multiplexing?", unit: 5, marks: 2 },
+              ],
+            },
+            part_b: {
+              title: "PART B — Long Answer Questions (Answer one from each pair — 5 × 10 = 50 Marks)",
+              sections: [
+                {
+                  unit: 1,
+                  unit_label: "Unit 1 — Architecture & Data Link Layer",
+                  q_option_1: { id: 421, q_num: "2", text: "Differentiate between OSI and TCP/IP reference models with layered architecture diagram.", unit: 1, marks: 10 },
+                  q_option_2: { id: 422, q_num: "3", text: "Explain CSMA/CD access control protocol used in Ethernet networks with collision resolution.", unit: 1, marks: 10 },
+                },
+                {
+                  unit: 2,
+                  unit_label: "Unit 2 — Transport Layer & Flow Control",
+                  q_option_1: { id: 423, q_num: "4", text: "Explain the working of TCP 3-way handshake with a neat sequence diagram and state transition.", unit: 2, marks: 10 },
+                  q_option_2: { id: 424, q_num: "5", text: "Explain Go-Back-N and Selective Repeat ARQ sliding window protocols in detail.", unit: 2, marks: 10 },
+                },
+                {
+                  unit: 3,
+                  unit_label: "Unit 3 — Network Layer Addressing & Subnetting",
+                  q_option_1: { id: 425, q_num: "6", text: "Explain IPv4 addressing classes and subnet calculation using CIDR notation with an example.", unit: 3, marks: 10 },
+                  q_option_2: { id: 426, q_num: "7", text: "Compare IPv4 and IPv6 header format improvements and explain IP fragmentation mechanics.", unit: 3, marks: 10 },
+                },
+                {
+                  unit: 4,
+                  unit_label: "Unit 4 — Routing Algorithms & Protocol Optimization",
+                  q_option_1: { id: 427, q_num: "8", text: "Explain Distance Vector Routing algorithm and detail the count-to-infinity problem with split horizon fix.", unit: 4, marks: 10 },
+                  q_option_2: { id: 428, q_num: "9", text: "Explain Link State Routing algorithm (Dijkstra's Shortest Path First) with link-state packet flooding.", unit: 4, marks: 10 },
+                },
+                {
+                  unit: 5,
+                  unit_label: "Unit 5 — Application Layer Protocols",
+                  q_option_1: { id: 429, q_num: "10", text: "Explain Domain Name System (DNS) architecture and step-by-step iterative vs recursive resolution.", unit: 5, marks: 10 },
+                  q_option_2: { id: 430, q_num: "11", text: "Compare HTTP/1.1 persistent pipelining versus HTTP/2 binary stream multiplexing.", unit: 5, marks: 10 },
+                },
+              ],
+            },
+          };
+        } else {
+          // Mid 1 Pattern: Units 1, 2, & Unit 3 (Part I - Addressing/Subnetting)
+          mockRes = {
+            status: "success",
+            subject: subject || "Computer Networks",
+            exam_type: examType,
+            paper_title: `${(subject || "Computer Networks").toUpperCase()} — MID EXAM 1 MOCK PAPER`,
+            detected_pattern: "AI Auto-Detected Syllabus Scope: Unit 1 (OSI/DLL), Unit 2 (Transport/ARQ), & Unit 3 Part I (Subnetting)",
+            time_allowed: "90 Minutes",
+            max_marks: 30,
+            part_a: {
+              title: "PART A — Short Answer Compulsory Questions (5 × 2 = 10 Marks)",
+              questions: [
+                { id: 101, q_num: "1.a", text: "Define OSI reference model and list its 7 functional layers.", unit: 1, marks: 2 },
+                { id: 102, q_num: "1.b", text: "What is framing in Data Link Layer? Explain byte stuffing.", unit: 1, marks: 2 },
+                { id: 103, q_num: "1.c", text: "What is the primary purpose of TCP 3-way handshake?", unit: 2, marks: 2 },
+                { id: 104, q_num: "1.d", text: "Define flow control and explain sliding window concept.", unit: 2, marks: 2 },
+                { id: 105, q_num: "1.e", text: "Define Classless Inter-Domain Routing (CIDR) notation.", unit: 3, marks: 2 },
+              ],
+            },
+            part_b: {
+              title: "PART B — Long Answer Questions (Answer one from each pair — Internal OR Choice)",
+              sections: [
+                {
+                  unit: 1,
+                  unit_label: "Unit 1 — Foundational Architecture & OSI/TCP Models",
+                  q_option_1: { id: 201, q_num: "2", text: "Differentiate between OSI and TCP/IP reference models with layered architecture diagram.", unit: 1, marks: 5 },
+                  q_option_2: { id: 202, q_num: "3", text: "Explain CSMA/CD access control protocol used in Ethernet networks including exponential backoff.", unit: 1, marks: 5 },
+                },
+                {
+                  unit: 2,
+                  unit_label: "Unit 2 — Transport Layer & Handshaking Mechanisms",
+                  q_option_1: { id: 203, q_num: "4", text: "Explain the working of TCP 3-way handshake with a neat sequence diagram.", unit: 2, marks: 5 },
+                  q_option_2: { id: 204, q_num: "5", text: "Explain Go-Back-N and Selective Repeat ARQ sliding window protocols.", unit: 2, marks: 5 },
+                },
+                {
+                  unit: 3,
+                  unit_label: "Unit 3 (Part I) — IP Addressing & Subnetting Architecture",
+                  q_option_1: { id: 205, q_num: "6", text: "Explain IPv4 addressing classes (A, B, C) and subnet calculation using CIDR notation /24.", unit: 3, marks: 5 },
+                  q_option_2: { id: 206, q_num: "7", text: "What is VLSM (Variable Length Subnet Masking)? Show how subnet blocks are allocated.", unit: 3, marks: 5 },
+                },
+              ],
+            },
+          };
+        }
+        setMockData(mockRes);
       } finally {
         setLoadingMock(false);
       }

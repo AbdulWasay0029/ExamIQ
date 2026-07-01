@@ -28,6 +28,30 @@ app.add_middleware(
 from fastapi.responses import JSONResponse
 from fastapi import Request
 
+@app.middleware("http")
+async def rewrite_api_prefix_and_handle(request: Request, call_next):
+    if request.url.path.startswith("/api/") and len(request.url.path) > 4:
+        request.scope["path"] = request.url.path[4:]
+    elif request.url.path == "/api":
+        request.scope["path"] = "/"
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS, PUT, DELETE"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str):
+    return JSONResponse(
+        status_code=200,
+        content={"status": "ok"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"[Global Error] Unhandled exception: {exc}")

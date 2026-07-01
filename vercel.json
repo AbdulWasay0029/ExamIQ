@@ -12,6 +12,10 @@
   ],
   "routes": [
     {
+      "src": "/(upload|important-questions|generate-answer|generate-mock-paper|strategy-plan|memory-sheet|evaluate-answer|seed-demo|subjects)(.*)",
+      "dest": "backend/main.py"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "backend/main.py"
     },
