@@ -121,6 +121,12 @@ def init_db():
         conn.commit()
 
 
+_db_initialized = False
+
 def get_session():
+    global _db_initialized
+    if not _db_initialized:
+        init_db()
+        _db_initialized = True
     with Session(engine) as session:
         yield session

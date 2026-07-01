@@ -9,7 +9,18 @@ import {
   ExamMode,
 } from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+function getApiUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (envUrl && envUrl !== "http://localhost:8000") {
+    return envUrl;
+  }
+  if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+    return "/api";
+  }
+  return "http://localhost:8000";
+}
+
+const API_URL = getApiUrl();
 
 export async function uploadFile(fileItem: FileItem, subject: string): Promise<Record<string, unknown>> {
   const formData = new FormData();
