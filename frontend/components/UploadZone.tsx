@@ -8,7 +8,6 @@ import {
   FolderOpen,
   Layers,
   CheckCircle2,
-  ShieldAlert,
   Cpu,
   TrendingUp,
   Award,

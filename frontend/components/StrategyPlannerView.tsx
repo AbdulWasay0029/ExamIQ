@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { StrategyPlan, ExamMode } from "../lib/types";
 import { fetchStrategyPlan } from "../lib/api";
-import { Clock, Flame, ShieldAlert, CheckCircle2, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { Clock, Flame, ShieldAlert, TrendingUp, Loader2 } from "lucide-react";
 
 interface StrategyPlannerViewProps {
   subject: string;

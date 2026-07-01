@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { MockPaperData, ExamMode } from "../lib/types";
+import { MockPaperData } from "../lib/types";
 import { generateAnswer } from "../lib/api";
 import { AnswerPanel } from "./AnswerPanel";
 import { Sparkles, Printer, ShieldCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
 
 interface MockPaperViewProps {
   data: MockPaperData;

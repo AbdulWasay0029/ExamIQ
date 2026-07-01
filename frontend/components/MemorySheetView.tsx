@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { MemorySheetUnit } from "../lib/types";
 import { fetchMemorySheet } from "../lib/api";
-import { Zap, Table as TableIcon, FileText, Printer, Loader2 } from "lucide-react";
+import { Zap, Printer, Loader2 } from "lucide-react";
 
 interface MemorySheetViewProps {
   subject: string;

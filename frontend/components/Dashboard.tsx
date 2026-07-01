@@ -62,8 +62,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           status: "success",
           subject: subject || "Computer Networks",
           exam_type: examType,
-          paper_title: `${(subject || "Computer Networks").toUpperCase()} — ${exam_type.toUpperCase()} MOCK EXAMINATION`,
-          detected_pattern: `AI Auto-Detected Tier-1 College Pattern (${exam_type}) — Part A Compulsory + Part B Internal Choice (OR Pairs)`,
+          paper_title: `${(subject || "Computer Networks").toUpperCase()} — ${examType.toUpperCase()} MOCK EXAMINATION`,
+          detected_pattern: `AI Auto-Detected Tier-1 College Pattern (${examType}) — Part A Compulsory + Part B Internal Choice (OR Pairs)`,
           time_allowed: "90 Minutes",
           max_marks: 30,
           part_a: {

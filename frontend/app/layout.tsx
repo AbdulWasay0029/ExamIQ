@@ -1,20 +1,7 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "./print.css";
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-plex",
-});
 
 export const metadata: Metadata = {
   title: "ExamIQ — AI Exam Survival & PYQ Deduplication Engine",
@@ -29,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${jakarta.variable} ${plexMono.variable} font-sans bg-[#090d16] text-[#f3f4f6] antialiased min-h-screen flex flex-col selection:bg-[#6366f1]/30 selection:text-white relative overflow-x-hidden`}
+        className="font-sans bg-[#090d16] text-[#f3f4f6] antialiased min-h-screen flex flex-col selection:bg-[#6366f1]/30 selection:text-white relative overflow-x-hidden"
       >
         {/* Subtle Ambient Architectural Grid & Glowing Orbs Backdrop */}
         <div className="fixed inset-0 pointer-events-none z-0 no-print">
@@ -48,10 +35,11 @@ export default function RootLayout({
         </div>
 
         {/* Interactive Main Application Container */}
-        <div className="relative z-10 flex-1 flex flex-col w-full">
+        <div className="relative z-10 flex-1 flex flex-col">
           {children}
         </div>
 
+        {/* Real-time Agent Notifications Toaster */}
         <Toaster
           position="bottom-right"
           toastOptions={{
@@ -59,9 +47,17 @@ export default function RootLayout({
               background: "#111827",
               color: "#f3f4f6",
               border: "1px solid #1e293b",
-              fontFamily: "var(--font-jakarta), sans-serif",
-              fontSize: "14px",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)",
+              borderRadius: "1rem",
+              padding: "0.85rem 1.25rem",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+            },
+            success: {
+              iconTheme: {
+                primary: "#10b981",
+                secondary: "#111827",
+              },
             },
           }}
         />
