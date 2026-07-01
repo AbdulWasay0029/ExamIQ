@@ -101,6 +101,20 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 def init_db():
     SQLModel.metadata.create_all(engine)
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        new_cols = [
+            ("years_appeared_json", 'TEXT DEFAULT "[2024, 2023]"'),
+            ("question_type", "TEXT DEFAULT 'Explain'"),
+            ("confidence_pct", "INTEGER DEFAULT 85"),
+            ("confirmed_appeared", "INTEGER DEFAULT 0")
+        ]
+        for col_name, col_def in new_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE question_clusters ADD COLUMN {col_name} {col_def}"))
+            except Exception:
+                pass
+        conn.commit()
 
 
 def get_session():
