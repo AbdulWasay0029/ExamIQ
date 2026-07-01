@@ -1,4 +1,4 @@
-import numpy as np
+import math
 from typing import List
 from datetime import datetime
 from sqlmodel import Session, select
@@ -6,20 +6,23 @@ from models import Question, QuestionCluster
 
 try:
     from sentence_transformers import SentenceTransformer
-
     embedder = SentenceTransformer("all-MiniLM-L6-v2")
 except Exception as e:
-    print(
-        f"[Clustering] sentence-transformers not available or still downloading ({e}). Using robust TF-IDF hash embeddings."
-    )
+    print(f"[Clustering] sentence-transformers not available ({e}). Using pure Python hash embeddings.")
     embedder = None
 
-from sklearn.feature_extraction.text import HashingVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from services.llm import llm_service
 
-# Hashing vectorizer produces fixed-size deterministic embeddings without needing fitting
-hashing_vectorizer = HashingVectorizer(n_features=128, norm="l2", analyzer="char_wb", ngram_range=(3, 5))
+
+def compute_cosine_sim(vec1: List[float], vec2: List[float]) -> float:
+    if not vec1 or not vec2 or len(vec1) != len(vec2):
+        return 0.0
+    dot = sum(a * b for a, b in zip(vec1, vec2))
+    norm1 = math.sqrt(sum(a * a for a in vec1))
+    norm2 = math.sqrt(sum(b * b for b in vec2))
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    return dot / (norm1 * norm2)
 
 
 def embed_text(text: str) -> List[float]:
@@ -29,9 +32,18 @@ def embed_text(text: str) -> List[float]:
             return [float(x) for x in vec]
         except Exception:
             pass
-    # Fast deterministic character trigram vector
-    vec = hashing_vectorizer.transform([text.lower()]).toarray()[0]
-    return [float(x) for x in vec]
+    # Fast lightweight pure Python character trigram hashing (128-dim)
+    dim = 128
+    vec = [0.0] * dim
+    clean = text.lower().strip()
+    for i in range(max(1, len(clean) - 2)):
+        trigram = clean[i:i+3]
+        h = hash(trigram) % dim
+        vec[h] += 1.0
+    norm = math.sqrt(sum(x * x for x in vec))
+    if norm > 0:
+        vec = [x / norm for x in vec]
+    return vec
 
 
 def detect_question_type(text: str) -> str:
@@ -67,7 +79,7 @@ def find_or_create_cluster(
     for cluster in existing_clusters:
         c_embedding = cluster.get_embedding()
         if c_embedding:
-            score = cosine_similarity([q_embedding], [c_embedding])[0][0]
+            score = compute_cosine_sim(q_embedding, c_embedding)
             if score > best_score:
                 best_score = score
                 best_match = cluster
