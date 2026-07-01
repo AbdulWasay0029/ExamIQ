@@ -96,8 +96,18 @@ async def upload_file(
 
     is_starred = str(teacher_flagged).lower() in ["true", "1", "yes"]
 
+    # Step 1: Extract raw text (pdfplumber → AI cleanup, or Gemini Vision for scanned/images)
+    # The new extractor.py handles ALL AI cleanup internally — no separate call needed
     raw_text = extract_text_from_file(file_bytes, filename, subject)
 
+    if not raw_text or len(raw_text.strip()) < 10:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not extract any text from {filename}. "
+                   "Ensure the file is a readable PDF, image, or text file."
+        )
+
+    # Step 2: Save document record
     doc = Document(
         subject=subject,
         source_type=source_type,
@@ -109,13 +119,12 @@ async def upload_file(
     session.commit()
     session.refresh(doc)
 
+    # Step 3: Notes go through chunking, not question extraction
     if source_type.lower() in ["notes", "class notes"]:
-        # Split notes into coherent chunks
         paragraphs = [p.strip() for p in raw_text.split("\n\n") if len(p.strip()) > 30]
         if not paragraphs:
             paragraphs = [raw_text]
         for idx, para in enumerate(paragraphs):
-            # Guess unit
             unit = 1 + (idx % 5)
             chunk = NotesChunk(
                 document_id=doc.id, chunk_text=para, unit=unit, subject=subject
@@ -129,12 +138,13 @@ async def upload_file(
             "document_id": doc.id,
         }
 
-    # Structure questions
+    # Step 4: Extract structured questions via AI (Gemini Flash)
     extracted = llm_service.extract_structured_questions(raw_text, subject)
 
+    questions_saved = 0
     for item in extracted:
         q_text = item.get("question_text", "").strip()
-        if not q_text:
+        if not q_text or len(q_text) < 10:
             continue
         marks = item.get("marks") or 10
         unit = item.get("unit") or 1
@@ -155,14 +165,18 @@ async def upload_file(
         session.commit()
         session.refresh(q)
 
+        # Step 5: Cluster this question (topic normalization + TF-IDF similarity)
         find_or_create_cluster(session, q, subject)
+        questions_saved += 1
 
+    # Step 6: Recompute priority scores for this subject
     recompute_priority_scores(session, subject, "Mid 1")
 
     return {
         "status": "success",
-        "questions_extracted": len(extracted),
+        "questions_extracted": questions_saved,
         "document_id": doc.id,
+        "raw_text_length": len(raw_text),
     }
 
 
@@ -268,7 +282,10 @@ def generate_mock_paper(
     pattern_mode: str = "auto",
     session: Session = Depends(get_session),
 ):
-    """Synthesizes a structured, realistic Mock Exam Question Paper matching the exact college pattern."""
+    """Synthesizes a structured, realistic Mock Exam Question Paper matching the exact college pattern.
+    PRIMARY PATH: Uses Gemini Flash AI to generate subject-specific questions from ranked topics.
+    FALLBACK: Uses domain-aware template only if AI call fails.
+    """
     clusters = session.exec(
         select(QuestionCluster).where(QuestionCluster.subject == subject)
     ).all()
@@ -290,6 +307,37 @@ def generate_mock_paper(
 
     # Sort descending by priority score / repetitions
     clusters.sort(key=lambda c: (c.priority_score or c.repetition_count * 5), reverse=True)
+
+    # ==== FIX 2: AI MOCK PAPER GENERATION (PRIMARY PATH) ====
+    # Try Gemini Flash first — templates are the FALLBACK, not the default
+    ranked_topics = [
+        {"text": c.canonical_text, "unit": c.unit or 1, "marks": round(c.avg_marks or 5), "repetition_count": c.repetition_count}
+        for c in clusters
+    ]
+    ai_paper = llm_service.generate_mock_paper_with_ai(subject, exam_type, ranked_topics)
+    if ai_paper and ai_paper.get("part_a") and ai_paper.get("part_b"):
+        exam_mode = exam_type.strip().lower()
+        is_semester = "sem" in exam_mode
+        return {
+            "status": "success",
+            "subject": subject,
+            "exam_type": exam_type,
+            "paper_title": f"{subject.upper()} — {exam_type.upper()} MOCK EXAMINATION",
+            "detected_pattern": f"AI-Generated Exam Paper ({exam_type.upper()}) — Based on {len(ranked_topics)} Analyzed PYQ Topics",
+            "time_allowed": "180 Minutes" if is_semester else "90 Minutes",
+            "max_marks": 70 if is_semester else 30,
+            "part_a": {
+                "title": f"PART A — Short Answer Compulsory Questions ({len(ai_paper['part_a'])} × 2 = {len(ai_paper['part_a'])*2} Marks)",
+                "questions": ai_paper["part_a"],
+            },
+            "part_b": {
+                "title": "PART B — Long Answer Questions (Answer one from each pair — Internal OR Choice)",
+                "sections": ai_paper["part_b"],
+            },
+        }
+
+    # ==== FALLBACK: Domain-aware template (only if AI fails) ====
+    print("[MockPaper] AI generation failed or returned empty, using domain-aware template fallback")
 
     # Group by unit
     by_unit = {u: [] for u in range(1, 6)}
@@ -313,58 +361,136 @@ def generate_mock_paper(
     exam_mode = exam_type.strip().lower()
     is_semester = "sem" in exam_mode
     is_mid2 = "2" in exam_mode or "mid 2" in exam_mode
+    subj_lower = subject.lower()
+    is_os = "operating" in subj_lower
+    is_daa = "algorithm" in subj_lower or "daa" in subj_lower
+
+    os_fallback_saq = {
+        1: "Define Process Control Block (PCB) and list its primary state components.",
+        2: "Define binary semaphore and explain atomic wait() and signal() operations.",
+        3: "State the four necessary Coffman conditions for deadlock occurrence.",
+        4: "Define virtual memory and explain demand paging page fault frequency.",
+        5: "Differentiate between contiguous and linked file allocation methods."
+    }
+    os_fallback_laq = {
+        1: [
+            "Explain preemptive vs non-preemptive CPU scheduling algorithms with Gantt charts.",
+            "Detail process state transition diagram and context switching mechanics."
+        ],
+        2: [
+            "Illustrate Peterson's software solution to critical section synchronization problem.",
+            "Define binary semaphores and solve the bounded-buffer producer-consumer problem."
+        ],
+        3: [
+            "State the 4 Coffman conditions for deadlock and explain Banker's deadlock avoidance algorithm.",
+            "Explain resource allocation graph (RAG) algorithm for deadlock detection and recovery."
+        ],
+        4: [
+            "Compare FIFO, LRU, and Optimal page replacement algorithms with page fault calculation.",
+            "Explain demand paging architecture and thrashing prevention working set model."
+        ],
+        5: [
+            "Detail indexed and chained disk allocation methods with directory hierarchy.",
+            "Compare FCFS, SSTF, SCAN, and C-LOOK disk scheduling algorithms with head movement."
+        ]
+    }
+
+    cn_fallback_saq = {
+        1: "Define OSI reference model and list its 7 functional layers.",
+        2: "What is framing in Data Link Layer? Explain byte stuffing mechanics.",
+        3: "Define Classless Inter-Domain Routing (CIDR) notation and subnet mask.",
+        4: "State the Bellman-Ford routing equation used in Distance Vector updates.",
+        5: "Differentiate between iterative and recursive DNS domain resolution."
+    }
+    cn_fallback_laq = {
+        1: [
+            "Differentiate between OSI and TCP/IP reference models with layered architecture diagram.",
+            "Explain CSMA/CD access control protocol used in Ethernet networks with collision resolution."
+        ],
+        2: [
+            "Explain the working of TCP 3-way handshake with a neat sequence diagram and state transitions.",
+            "Explain Go-Back-N and Selective Repeat ARQ sliding window flow control protocols."
+        ],
+        3: [
+            "Explain IPv4 addressing classes (A, B, C) and subnet calculation using CIDR /24 block.",
+            "Compare IPv4 and IPv6 packet header format improvements and IP fragmentation."
+        ],
+        4: [
+            "Explain Distance Vector Routing algorithm and detail the count-to-infinity problem with split horizon.",
+            "Explain Link State Routing algorithm (Dijkstra's Shortest Path First) with link-state flooding."
+        ],
+        5: [
+            "Explain Domain Name System (DNS) hierarchy and step-by-step resolution mechanics.",
+            "Compare HTTP/1.1 persistent pipelining versus HTTP/2 binary stream multiplexing."
+        ]
+    }
+
+    def get_domain_q(unit: int, is_saq: bool, idx_laq: int = 0):
+        pool = by_unit.get(unit, []) + clusters
+        for c in pool:
+            if c.id not in used_ids:
+                if c.id:
+                    used_ids.add(c.id)
+                marks = 2 if is_saq else 5
+                if is_semester and not is_saq:
+                    marks = 10
+                return {"id": c.id or 999, "text": c.canonical_text, "unit": unit, "marks": marks}
+        
+        # Genuine Domain Fallback (Never invent generic placeholders!)
+        if is_os:
+            text = os_fallback_saq.get(unit, "Define process scheduling parameters.") if is_saq else os_fallback_laq.get(unit, ["Explain OS memory architecture.", "Detail CPU scheduling algorithms."])[idx_laq % 2]
+        else:
+            text = cn_fallback_saq.get(unit, "Define OSI layer functions.") if is_saq else cn_fallback_laq.get(unit, ["Explain TCP/IP protocol stack.", "Detail sliding window flow control."])[idx_laq % 2]
+        
+        marks = 2 if is_saq else (10 if is_semester else 5)
+        return {"id": 999 + unit * 10 + idx_laq, "text": text, "unit": unit, "marks": marks}
 
     part_a = []
     part_b = []
 
     if is_semester:
-        # Semester Pattern: Part A (10 SAQs, 2 per unit) + Part B (5 LAQ OR pairs, 1 per unit)
         labels = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
         for idx in range(10):
             target_u = (idx // 2) + 1
-            q = get_q(target_u, 1, f"Define core principles of Unit {target_u}.")
+            q = get_domain_q(target_u, True)
             q["q_num"] = f"1.{labels[idx]}"
-            q["marks"] = 2
             part_a.append(q)
 
         for u in range(1, 6):
-            q1 = get_q(u, 1, f"Explain the complete architectural design of Unit {u} systems.")
-            q2 = get_q(u, 1, f"Discuss design trade-offs and error handling in Unit {u}.")
+            q1 = get_domain_q(u, False, 0)
+            q2 = get_domain_q(u, False, 1)
             q1["q_num"] = f"{10 + u}.A"
-            q1["marks"] = 10
             q2["q_num"] = f"{10 + u}.B"
-            q2["marks"] = 10
+            label = f"Unit {u} — {'OS Structures & CPU Scheduling' if is_os and u==1 else ('Process Management & Synchronization' if is_os and u==2 else ('Deadlock Management' if is_os and u==3 else ('Memory & Page Replacement' if is_os and u==4 else ('File Systems & Storage' if is_os else f'Core Unit {u} Architecture'))))}"
+            if not is_os:
+                cn_labels = {1: "Unit 1 — Foundational Architecture & OSI/TCP Models", 2: "Unit 2 — Transport Layer & Handshaking Mechanisms", 3: "Unit 3 — IP Addressing & Subnetting", 4: "Unit 4 — Routing Algorithms", 5: "Unit 5 — Application Layer Protocols"}
+                label = cn_labels.get(u, f"Unit {u}")
             part_b.append({
                 "unit": u,
-                "unit_label": f"Unit {u} — Full Syllabus Evaluation",
+                "unit_label": label,
                 "q_option_1": q1,
                 "q_option_2": q2,
             })
     elif is_mid2:
-        # Mid 2 Pattern: Part A (1.a Unit 3 Part B, 1.b/c Unit 4, 1.d/e Unit 5)
         units_saq = [3, 4, 4, 5, 5]
         labels = ["a", "b", "c", "d", "e"]
         for idx, u in enumerate(units_saq):
-            q = get_q(u, 4, f"Define key mechanisms in Unit {u}.")
+            q = get_domain_q(u, True)
             q["q_num"] = f"1.{labels[idx]}"
-            q["marks"] = 2
             part_a.append(q)
 
-        # Part B: 5 OR pairs across Unit 3 Part B, Unit 4, Unit 5
         pairs_cfg = [
-            (3, 2, 3, "Unit 3 (Part II) — Advanced Concepts"),
-            (4, 4, 5, "Unit 4 — Network & Routing Architecture"),
-            (4, 6, 7, "Unit 4 — Protocol Deep-Dive"),
-            (5, 8, 9, "Unit 5 — Application Layer & DNS"),
-            (5, 10, 11, "Unit 5 — Security & Protocol Optimization"),
+            (3, 2, 3, "Unit 3 (Part II) — Deadlock Avoidance & Banker's Algorithm" if is_os else "Unit 3 (Part II) — Advanced IP Subnetting & VLSM"),
+            (4, 4, 5, "Unit 4 — Virtual Memory & Demand Paging Architecture" if is_os else "Unit 4 — Network Routing Architecture"),
+            (4, 6, 7, "Unit 4 — Page Replacement Policies (FIFO, LRU, Optimal)" if is_os else "Unit 4 — Routing Protocol Deep-Dive"),
+            (5, 8, 9, "Unit 5 — File System Directory & Allocation Methods" if is_os else "Unit 5 — Application Layer & DNS"),
+            (5, 10, 11, "Unit 5 — Disk Scheduling Algorithms & Storage Architecture" if is_os else "Unit 5 — Security & Protocol Optimization"),
         ]
         for u, n1, n2, label in pairs_cfg:
-            q1 = get_q(u, 4, f"Explain key working mechanisms of Unit {u}.")
-            q2 = get_q(u, 5, f"Compare design approaches in Unit {u}.")
+            q1 = get_domain_q(u, False, 0)
+            q2 = get_domain_q(u, False, 1)
             q1["q_num"] = str(n1)
-            q1["marks"] = 5
             q2["q_num"] = str(n2)
-            q2["marks"] = 5
             part_b.append({
                 "unit": u,
                 "unit_label": label,
@@ -372,30 +498,25 @@ def generate_mock_paper(
                 "q_option_2": q2,
             })
     else:
-        # Mid 1 Pattern: Part A (1.a/b Unit 1, 1.c/d Unit 2, 1.e Unit 3 Part A)
         units_saq = [1, 1, 2, 2, 3]
         labels = ["a", "b", "c", "d", "e"]
         for idx, u in enumerate(units_saq):
-            q = get_q(u, 1, f"Define core parameters of Unit {u}.")
+            q = get_domain_q(u, True)
             q["q_num"] = f"1.{labels[idx]}"
-            q["marks"] = 2
             part_a.append(q)
 
-        # Part B: 5 OR pairs across Unit 1, Unit 2, Unit 3 Part A
         pairs_cfg = [
-            (1, 2, 3, "Unit 1 — Foundational Architecture & OSI/TCP Models"),
-            (1, 4, 5, "Unit 1 — Physical & Data Link Layer Protocols"),
-            (2, 6, 7, "Unit 2 — Transport Layer & Handshaking Mechanisms"),
-            (2, 8, 9, "Unit 2 — Flow Control & Sliding Window ARQ"),
-            (3, 10, 11, "Unit 3 (Part I) — IP Addressing & VLSM Subnetting"),
+            (1, 2, 3, "Unit 1 — Operating System Structures & Architecture" if is_os else "Unit 1 — Foundational Architecture & OSI/TCP Models"),
+            (1, 4, 5, "Unit 1 — CPU Scheduling Algorithms & Gantt Charts" if is_os else "Unit 1 — Physical & Data Link Layer Protocols"),
+            (2, 6, 7, "Unit 2 — Process Management & Inter-Process Communication" if is_os else "Unit 2 — Transport Layer & Handshaking Mechanisms"),
+            (2, 8, 9, "Unit 2 — Critical Section & Process Synchronization" if is_os else "Unit 2 — Flow Control & Sliding Window ARQ"),
+            (3, 10, 11, "Unit 3 (Part I) — Deadlock Characterization & Prevention" if is_os else "Unit 3 (Part I) — IP Addressing & VLSM Subnetting Architecture"),
         ]
         for u, n1, n2, label in pairs_cfg:
-            q1 = get_q(u, 1, f"Explain the complete working flowchart of Unit {u} protocol.")
-            q2 = get_q(u, 2, f"Analyze the performance metrics and error recovery in Unit {u}.")
+            q1 = get_domain_q(u, False, 0)
+            q2 = get_domain_q(u, False, 1)
             q1["q_num"] = str(n1)
-            q1["marks"] = 5
             q2["q_num"] = str(n2)
-            q2["marks"] = 5
             part_b.append({
                 "unit": u,
                 "unit_label": label,

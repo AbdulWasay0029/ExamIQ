@@ -73,6 +73,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         
         const isMid2 = examType === "Mid 2";
         const isSem = examType === "Semester Exam";
+        const isOS = (subject || "").toLowerCase().includes("operating");
         
         let mockRes: MockPaperData;
         if (isMid2) {
@@ -81,12 +82,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
             subject: subject || "Computer Networks",
             exam_type: examType,
             paper_title: `${(subject || "Computer Networks").toUpperCase()} — MID EXAM 2 MOCK PAPER`,
-            detected_pattern: "AI Auto-Detected Syllabus Scope: Unit 3 (Part II - Advanced IP), Unit 4 (Routing), & Unit 5 (App Layer)",
+            detected_pattern: isOS 
+              ? "AI Auto-Detected Syllabus Scope: Unit 3 (Part II - Banker's Algo), Unit 4 (Virtual Memory), & Unit 5 (File Systems)"
+              : "AI Auto-Detected Syllabus Scope: Unit 3 (Part II - Advanced IP), Unit 4 (Routing), & Unit 5 (App Layer)",
             time_allowed: "90 Minutes",
             max_marks: 30,
             part_a: {
               title: "PART A — Short Answer Compulsory Questions (5 × 2 = 10 Marks)",
-              questions: [
+              questions: isOS ? [
+                { id: 301, q_num: "1.a", text: "State the four Coffman conditions required for deadlock.", unit: 3, marks: 2 },
+                { id: 302, q_num: "1.b", text: "Define resource allocation graph (RAG) and claim edges.", unit: 3, marks: 2 },
+                { id: 303, q_num: "1.c", text: "Define virtual memory and explain demand paging frequency.", unit: 4, marks: 2 },
+                { id: 304, q_num: "1.d", text: "What is thrashing? How does working-set model prevent it?", unit: 4, marks: 2 },
+                { id: 305, q_num: "1.e", text: "Differentiate contiguous and indexed disk file allocation.", unit: 5, marks: 2 },
+              ] : [
                 { id: 301, q_num: "1.a", text: "Compare IPv4 and IPv6 packet header structure.", unit: 3, marks: 2 },
                 { id: 302, q_num: "1.b", text: "Define Address Resolution Protocol (ARP) and explain its role.", unit: 3, marks: 2 },
                 { id: 303, q_num: "1.c", text: "State the Bellman-Ford equation used in Distance Vector Routing.", unit: 4, marks: 2 },
@@ -96,7 +105,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
             },
             part_b: {
               title: "PART B — Long Answer Questions (Answer one from each pair — Internal OR Choice)",
-              sections: [
+              sections: isOS ? [
+                {
+                  unit: 3,
+                  unit_label: "Unit 3 (Part II) — Deadlock Avoidance & Detection",
+                  q_option_1: { id: 311, q_num: "2", text: "Explain Banker's algorithm for deadlock avoidance with safety and resource-request structures.", unit: 3, marks: 5 },
+                  q_option_2: { id: 312, q_num: "3", text: "Explain Resource Allocation Graph (RAG) reduction for deadlock detection and recovery strategies.", unit: 3, marks: 5 },
+                },
+                {
+                  unit: 4,
+                  unit_label: "Unit 4 — Virtual Memory & Page Replacement Policies",
+                  q_option_1: { id: 313, q_num: "4", text: "Compare FIFO, LRU, and Optimal page replacement algorithms with page fault calculations.", unit: 4, marks: 5 },
+                  q_option_2: { id: 314, q_num: "5", text: "Explain demand paging architecture and hardware support required for virtual memory.", unit: 4, marks: 5 },
+                },
+                {
+                  unit: 5,
+                  unit_label: "Unit 5 — File System Implementation & Disk Scheduling",
+                  q_option_1: { id: 315, q_num: "6", text: "Explain indexed and chained disk allocation methods with directory hierarchy trade-offs.", unit: 5, marks: 5 },
+                  q_option_2: { id: 316, q_num: "7", text: "Compare FCFS, SSTF, SCAN, and C-LOOK disk head scheduling algorithms with head movement.", unit: 5, marks: 5 },
+                },
+              ] : [
                 {
                   unit: 3,
                   unit_label: "Unit 3 (Part II) — Advanced Network Layer & Protocols",
@@ -129,7 +157,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
             max_marks: 70,
             part_a: {
               title: "PART A — Short Answer Compulsory Questions (10 × 2 = 20 Marks)",
-              questions: [
+              questions: isOS ? [
+                { id: 401, q_num: "1.a", text: "Define Process Control Block (PCB) and list its components.", unit: 1, marks: 2 },
+                { id: 402, q_num: "1.b", text: "Differentiate preemptive vs non-preemptive CPU scheduling.", unit: 1, marks: 2 },
+                { id: 403, q_num: "1.c", text: "What is a thread? List benefits of multi-threading.", unit: 2, marks: 2 },
+                { id: 404, q_num: "1.d", text: "Define critical section and race condition.", unit: 2, marks: 2 },
+                { id: 405, q_num: "1.e", text: "State the 4 necessary conditions for deadlock.", unit: 3, marks: 2 },
+                { id: 406, q_num: "1.f", text: "Define safe state in Banker's algorithm.", unit: 3, marks: 2 },
+                { id: 407, q_num: "1.g", text: "What is internal vs external fragmentation?", unit: 4, marks: 2 },
+                { id: 408, q_num: "1.h", text: "Define Translation Lookaside Buffer (TLB).", unit: 4, marks: 2 },
+                { id: 409, q_num: "1.i", text: "List common file access permissions and attributes.", unit: 5, marks: 2 },
+                { id: 410, q_num: "1.j", text: "Define seek time and rotational latency in disks.", unit: 5, marks: 2 },
+              ] : [
                 { id: 401, q_num: "1.a", text: "Define OSI reference model and list its 7 functional layers.", unit: 1, marks: 2 },
                 { id: 402, q_num: "1.b", text: "Explain framing and byte stuffing in Data Link Layer.", unit: 1, marks: 2 },
                 { id: 403, q_num: "1.c", text: "What is the primary purpose of TCP 3-way handshake?", unit: 2, marks: 2 },
@@ -144,7 +183,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
             },
             part_b: {
               title: "PART B — Long Answer Questions (Answer one from each pair — 5 × 10 = 50 Marks)",
-              sections: [
+              sections: isOS ? [
+                {
+                  unit: 1,
+                  unit_label: "Unit 1 — Operating System Structures & CPU Scheduling",
+                  q_option_1: { id: 421, q_num: "2", text: "Explain preemptive and non-preemptive CPU scheduling algorithms (FCFS, SJF, Round Robin) with Gantt charts.", unit: 1, marks: 10 },
+                  q_option_2: { id: 422, q_num: "3", text: "Detail process state transition diagram and structure of Process Control Block (PCB).", unit: 1, marks: 10 },
+                },
+                {
+                  unit: 2,
+                  unit_label: "Unit 2 — Process Synchronization & Inter-Process Communication",
+                  q_option_1: { id: 423, q_num: "4", text: "Illustrate Peterson's software solution to critical section synchronization problem with proof of correctness.", unit: 2, marks: 10 },
+                  q_option_2: { id: 424, q_num: "5", text: "Define binary semaphores and solve the bounded-buffer producer-consumer problem.", unit: 2, marks: 10 },
+                },
+                {
+                  unit: 3,
+                  unit_label: "Unit 3 — Deadlock Characterization & Avoidance",
+                  q_option_1: { id: 425, q_num: "6", text: "State the 4 Coffman conditions for deadlock and explain Banker's deadlock avoidance algorithm with numerical proof.", unit: 3, marks: 10 },
+                  q_option_2: { id: 426, q_num: "7", text: "Explain Resource Allocation Graph (RAG) reduction algorithm for deadlock detection and recovery.", unit: 3, marks: 10 },
+                },
+                {
+                  unit: 4,
+                  unit_label: "Unit 4 — Memory Management & Page Replacement Policies",
+                  q_option_1: { id: 427, q_num: "8", text: "Compare FIFO, LRU, and Optimal virtual memory page replacement algorithms with page fault evaluation.", unit: 4, marks: 10 },
+                  q_option_2: { id: 428, q_num: "9", text: "Explain demand paging architecture and thrashing prevention using working-set model.", unit: 4, marks: 10 },
+                },
+                {
+                  unit: 5,
+                  unit_label: "Unit 5 — File Systems & Mass Storage Structure",
+                  q_option_1: { id: 429, q_num: "10", text: "Detail contiguous, chained, and indexed disk file allocation methods with directory structures.", unit: 5, marks: 10 },
+                  q_option_2: { id: 430, q_num: "11", text: "Compare FCFS, SSTF, SCAN, C-SCAN, and C-LOOK disk scheduling algorithms with head movement evaluation.", unit: 5, marks: 10 },
+                },
+              ] : [
                 {
                   unit: 1,
                   unit_label: "Unit 1 — Architecture & Data Link Layer",
@@ -179,18 +249,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
             },
           };
         } else {
-          // Mid 1 Pattern: Units 1, 2, & Unit 3 (Part I - Addressing/Subnetting)
+          // Mid 1 Pattern: Units 1, 2, & Unit 3 (Part I)
           mockRes = {
             status: "success",
             subject: subject || "Computer Networks",
             exam_type: examType,
             paper_title: `${(subject || "Computer Networks").toUpperCase()} — MID EXAM 1 MOCK PAPER`,
-            detected_pattern: "AI Auto-Detected Syllabus Scope: Unit 1 (OSI/DLL), Unit 2 (Transport/ARQ), & Unit 3 Part I (Subnetting)",
+            detected_pattern: isOS 
+              ? "AI Auto-Detected Syllabus Scope: Unit 1 (OS Structures), Unit 2 (Process/Threads), & Unit 3 Part I (Deadlocks)"
+              : "AI Auto-Detected Syllabus Scope: Unit 1 (OSI/DLL), Unit 2 (Transport/ARQ), & Unit 3 Part I (Subnetting)",
             time_allowed: "90 Minutes",
             max_marks: 30,
             part_a: {
               title: "PART A — Short Answer Compulsory Questions (5 × 2 = 10 Marks)",
-              questions: [
+              questions: isOS ? [
+                { id: 101, q_num: "1.a", text: "Define process and list the various states a process can be in.", unit: 1, marks: 2 },
+                { id: 102, q_num: "1.b", text: "What are the core components of a Process Control Block (PCB)?", unit: 1, marks: 2 },
+                { id: 103, q_num: "1.c", text: "Define user-level thread vs kernel-level thread.", unit: 2, marks: 2 },
+                { id: 104, q_num: "1.d", text: "Why is process synchronization necessary? Define race condition.", unit: 2, marks: 2 },
+                { id: 105, q_num: "1.e", text: "State the four Coffman conditions required for deadlock.", unit: 3, marks: 2 },
+              ] : [
                 { id: 101, q_num: "1.a", text: "Define OSI reference model and list its 7 functional layers.", unit: 1, marks: 2 },
                 { id: 102, q_num: "1.b", text: "What is framing in Data Link Layer? Explain byte stuffing.", unit: 1, marks: 2 },
                 { id: 103, q_num: "1.c", text: "What is the primary purpose of TCP 3-way handshake?", unit: 2, marks: 2 },
@@ -200,7 +278,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
             },
             part_b: {
               title: "PART B — Long Answer Questions (Answer one from each pair — Internal OR Choice)",
-              sections: [
+              sections: isOS ? [
+                {
+                  unit: 1,
+                  unit_label: "Unit 1 — Operating System Structures & CPU Scheduling",
+                  q_option_1: { id: 201, q_num: "2", text: "Explain preemptive vs non-preemptive scheduling algorithms (FCFS, SJF, Round Robin) with Gantt charts.", unit: 1, marks: 5 },
+                  q_option_2: { id: 202, q_num: "3", text: "Detail process state transition diagram and structure of Process Control Block (PCB).", unit: 1, marks: 5 },
+                },
+                {
+                  unit: 2,
+                  unit_label: "Unit 2 — Process Management, Threads & Synchronization",
+                  q_option_1: { id: 203, q_num: "4", text: "Illustrate Peterson's software solution to critical section synchronization problem with proof of correctness.", unit: 2, marks: 5 },
+                  q_option_2: { id: 204, q_num: "5", text: "Define binary semaphores and solve the bounded-buffer producer-consumer problem.", unit: 2, marks: 5 },
+                },
+                {
+                  unit: 3,
+                  unit_label: "Unit 3 (Part I) — Deadlock Characterization & Prevention",
+                  q_option_1: { id: 205, q_num: "6", text: "State the 4 Coffman conditions for deadlock and explain Banker's deadlock avoidance algorithm.", unit: 3, marks: 5 },
+                  q_option_2: { id: 206, q_num: "7", text: "Explain Resource Allocation Graph (RAG) reduction algorithm for deadlock detection.", unit: 3, marks: 5 },
+                },
+              ] : [
                 {
                   unit: 1,
                   unit_label: "Unit 1 — Foundational Architecture & OSI/TCP Models",

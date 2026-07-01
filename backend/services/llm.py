@@ -16,6 +16,155 @@ class LLMService:
         self.openai_key = os.getenv("OPENAI_API_KEY")
         self.anthropic_key = os.getenv("ANTHROPIC_API_KEY")
 
+    # ============================================================
+    # FIX 1: AI OCR Cleanup — runs BEFORE extraction or clustering
+    # ============================================================
+    def clean_raw_text_with_ai(self, raw_text: str, subject: str) -> str:
+        """Cleans raw OCR/PDF text using Gemini Flash.
+        Removes college headers, page numbers, roll number fields,
+        OCR artifacts, and returns only clean exam question text.
+        This is the single most important AI call in the pipeline.
+        """
+        if not self.gemini_key:
+            return raw_text  # No key = pass through
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.gemini_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+
+            prompt = (
+                "You are cleaning raw OCR text extracted from a university exam paper.\n"
+                f"Subject: {subject}\n\n"
+                "Your job:\n"
+                "1. Extract ONLY the actual exam questions from this text.\n"
+                "2. REMOVE all of the following:\n"
+                "   - College/university headers (CMR INSTITUTE, JNTUH, VTU, etc.)\n"
+                "   - Roll number fields, date fields, time allowed text\n"
+                "   - Instruction lines ('Answer any FIVE', 'Internal Choice', etc.)\n"
+                "   - Page numbers or random numbers that leaked into question text\n"
+                "   - OCR garbage characters, broken words, random symbols\n"
+                "   - Question numbers at the start (1., 2., a), b), etc.)\n"
+                "3. FIX broken OCR words (e.g., 'multi O pl Ric ation' → 'multiplication')\n"
+                "4. Each question should be a clean, complete, standalone sentence\n"
+                "5. Preserve mark allocations if clearly present (e.g., 10M, 5 Marks)\n\n"
+                "Return ONLY a JSON array of objects:\n"
+                '[{"question": "Clean question text", "marks": 10, "unit": 2}]\n\n'
+                "If marks or unit are unclear, estimate based on question complexity and subject curriculum.\n\n"
+                f"Raw OCR text:\n{raw_text[:8000]}"
+            )
+
+            res = model.generate_content(prompt)
+            text = res.text
+            match = re.search(r"\[.*\]", text, re.DOTALL)
+            if match:
+                cleaned = json.loads(match.group(0))
+                # Reconstruct as clean text for downstream processing
+                lines = []
+                for item in cleaned:
+                    q = item.get("question", "").strip()
+                    m = item.get("marks", 10)
+                    u = item.get("unit", 1)
+                    if q and len(q) > 10:
+                        lines.append(f"{q} ({m}M) [Unit {u}]")
+                if lines:
+                    return "\n".join(lines)
+        except Exception as e:
+            print(f"[LLMService] OCR cleanup failed, passing raw: {e}")
+
+        return raw_text
+
+    # ============================================================
+    # FIX 2: AI Mock Paper Generation — replaces template garbage
+    # ============================================================
+    def generate_mock_paper_with_ai(
+        self, subject: str, exam_type: str, ranked_topics: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Generates a realistic university mock paper using Gemini Flash.
+        Uses actual ranked topics from the database — never invents concepts.
+        """
+        if not self.gemini_key:
+            return None  # Fallback to template if no key
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=self.gemini_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+
+            exam_mode = exam_type.strip().lower()
+            is_semester = "sem" in exam_mode
+            is_mid2 = "2" in exam_mode
+
+            if is_semester:
+                units_scope = "Units 1 through 5 (full syllabus)"
+                part_a_spec = "10 compulsory SAQs (2 marks each, 2 per unit)"
+                part_b_spec = "5 sections (one per unit), each with 2 OR-choice questions worth 10 marks"
+                time = "180 Minutes"
+                max_marks = 70
+            elif is_mid2:
+                units_scope = "Unit 3 (Part B), Unit 4, and Unit 5"
+                part_a_spec = "5 compulsory SAQs (2 marks each)"
+                part_b_spec = "3 sections with 2 OR-choice questions each worth 5 marks"
+                time = "90 Minutes"
+                max_marks = 30
+            else:
+                units_scope = "Unit 1, Unit 2, and Unit 3 (Part A)"
+                part_a_spec = "5 compulsory SAQs (2 marks each)"
+                part_b_spec = "3 sections with 2 OR-choice questions each worth 5 marks"
+                time = "90 Minutes"
+                max_marks = 30
+
+            # Build ranked topics summary for the prompt
+            topics_str = ""
+            for i, t in enumerate(ranked_topics[:20]):
+                topics_str += f"{i+1}. [{t.get('unit', '?')}] {t.get('text', t.get('canonical_text', ''))} (appeared {t.get('repetition_count', 1)}×, {t.get('marks', 5)}M)\n"
+
+            prompt = (
+                f"Generate a realistic Indian university exam mock paper for:\n"
+                f"Subject: {subject}\n"
+                f"Exam Type: {exam_type}\n"
+                f"Syllabus Scope: {units_scope}\n"
+                f"Time: {time}, Max Marks: {max_marks}\n\n"
+                f"Paper Format:\n"
+                f"- PART A: {part_a_spec}\n"
+                f"- PART B: {part_b_spec}\n\n"
+                f"These are the ACTUAL topics ranked by importance from real PYQ analysis:\n{topics_str}\n"
+                "CRITICAL RULES:\n"
+                "1. Questions must be SPECIFIC and answerable — no generic filler\n"
+                "2. Use REAL terminology from the subject\n"
+                "3. Part A tests definitions, short concepts, one-liners\n"
+                "4. Part B tests working mechanisms, algorithms, comparisons, diagrams\n"
+                "5. NEVER write generic placeholder text like 'analyze performance metrics in Unit X'\n"
+                "6. ONLY use concepts from the ranked topics list above — do NOT invent new topics\n"
+                "7. Each question must feel like it was written by an actual professor\n\n"
+                "Return ONLY valid JSON in this exact shape:\n"
+                '{\n'
+                '  "part_a": [{"q_num": "1.a", "text": "...", "unit": 1, "marks": 2}],\n'
+                '  "part_b": [{"unit": 1, "unit_label": "Unit 1 — Topic Area", '
+                '"q_option_1": {"q_num": "2", "text": "...", "unit": 1, "marks": 5}, '
+                '"q_option_2": {"q_num": "3", "text": "...", "unit": 1, "marks": 5}}]\n'
+                '}'
+            )
+
+            res = model.generate_content(prompt)
+            text = res.text
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                paper = json.loads(match.group(0))
+                # Assign IDs
+                for i, q in enumerate(paper.get("part_a", [])):
+                    q["id"] = 900 + i
+                for i, sec in enumerate(paper.get("part_b", [])):
+                    if "q_option_1" in sec:
+                        sec["q_option_1"]["id"] = 950 + i * 2
+                    if "q_option_2" in sec:
+                        sec["q_option_2"]["id"] = 951 + i * 2
+                return paper
+        except Exception as e:
+            print(f"[LLMService] AI mock paper generation failed: {e}")
+
+        return None
+
     def extract_structured_questions(
         self, raw_text: str, subject: str
     ) -> List[Dict[str, Any]]:
@@ -174,52 +323,6 @@ class LLMService:
             except Exception:
                 pass
         return False
-
-        # Intelligent Markdown Template Generation
-        notes_context = (
-            "\n".join([f"> *{chunk}*" for chunk in notes_chunks[:2]])
-            if grounded
-            else "> *Note: Extrapolated from standard academic curriculum standards.*"
-        )
-
-        if marks <= 3:
-            answer = f"### Concise Definition ({marks} Marks)\n\n"
-            answer += f"**{question_text.rstrip('?')}** refers to a foundational protocol/mechanism designed to ensure reliable, ordered, and fault-tolerant operations within the system architecture.\n\n"
-            answer += f"**Key Characteristic:** It enforces strict boundary rules while optimizing resource allocation.\n\n"
-            answer += f"#### Source Notes Context:\n{notes_context}"
-        elif marks <= 6:
-            answer = f"### Structured Answer ({marks} Marks)\n\n"
-            answer += f"#### 1. Introduction\n"
-            answer += f"To understand **{question_text.rstrip('?')}**, we must analyze its role in managing system state, data flow, and error mitigation.\n\n"
-            answer += f"#### 2. Core Operational Principles\n"
-            answer += f"- **Initialization & Handshaking:** Establishes synchronized parameters before data exchange.\n"
-            answer += (
-                f"- **State Management:** Maintains active buffers to prevent dropouts or synchronization loss.\n"
-                f"- **Termination:** Gracefully releases resources upon execution completion.\n\n"
-            )
-            answer += f"#### Source Notes Context:\n{notes_context}"
-        else:
-            answer = f"### Comprehensive Examination Answer ({marks} Marks)\n\n"
-            answer += f"#### 1. Architectural Overview\n"
-            answer += f"When addressing **{question_text.rstrip('?')}**, standard university evaluation criteria require detailing both conceptual mechanics and protocol specifications.\n\n"
-            answer += f"#### 2. Step-by-Step Working Mechanism\n\n"
-            answer += f"```\n[Sender/Client] ------ Request / SYN -------> [Receiver/Server]\n[Sender/Client] <----- SYN-ACK Response ----- [Receiver/Server]\n[Sender/Client] ------ ACK Confirmation ----> [Receiver/Server]\n```\n\n"
-            answer += f"1. **Phase I (Request Generation):** The client transmits a control packet containing initial sequence numbers and feature flags.\n"
-            answer += f"2. **Phase II (Acknowledgment & Negotiation):** The receiver allocates memory buffers and replies with an affirmative acknowledgment packet.\n"
-            answer += f"3. **Phase III (Session Establishment):** Full duplex communication channel is activated.\n\n"
-            answer += f"#### 3. Comparative Advantage & Trade-offs\n"
-            answer += (
-                f"| Aspect | Primary Method | Alternative Approach |\n"
-                f"| :--- | :--- | :--- |\n"
-                f"| **Reliability** | High (Guaranteed delivery) | Low (Best effort) |\n"
-                f"| **Overhead** | Medium-High | Minimal |\n"
-                f"| **Latency** | +1 RTT setup delay | Zero setup delay |\n\n"
-            )
-            answer += f"#### 4. Conclusion\n"
-            answer += f"In conclusion, implementing this model ensures robust synchronization at the cost of slight control packet overhead, making it indispensable in modern engineering curriculums.\n\n"
-            answer += f"#### Grounding Source Notes:\n{notes_context}"
-
-        return answer, grounded
 
 
 llm_service = LLMService()

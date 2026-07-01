@@ -61,9 +61,65 @@ def detect_question_type(text: str) -> str:
     return "Explain"
 
 
+import re
+
+def normalize_question_to_topic(text: str, subject: str) -> str:
+    # 1. Strip OCR garbage headers, college names, trailing page numbers
+    clean = re.sub(r"^(CMR|JNTU|ANNA|VTU|BITS|IIT|NIT|HYDERABAD|INSTITUTE|COLLEGE|EXAM|QUESTION|PAPER).*?:?\s*", "", text, flags=re.I)
+    clean = re.sub(r"^[a-z]([A-Z])", r"\1", clean)
+    clean = re.sub(r"\b\d+,\s*\d+(,\s*\d+)*\s*$", "", clean).strip()
+    
+    lower = clean.lower()
+    
+    # Computer Networks Topics
+    if any(w in lower for w in ["handshake", "3-way", "syn", "establishment", "connection-oriented"]):
+        return "[Topic: TCP Connection Handshake] Explain the 3-way handshake mechanism and sequence synchronization."
+    if any(w in lower for w in ["osi", "reference model", "7 layers", "iso-osi", "sketch osi"]):
+        return "[Topic: OSI 7-Layer Model] Detail the OSI reference model architecture and individual layer responsibilities."
+    if any(w in lower for w in ["dns", "domain name", "iterative", "recursive"]):
+        return "[Topic: DNS Resolution Mechanics] Explain iterative vs. recursive Domain Name System (DNS) query resolution."
+    if any(w in lower for w in ["subnet", "cidr", "vlsm", "masking", "classless"]):
+        return "[Topic: Subnetting & CIDR] Illustrate Classless Inter-Domain Routing (CIDR) address blocks and subnet masking."
+    if any(w in lower for w in ["dijkstra", "link state", "lsr", "shortest path"]):
+        return "[Topic: Link State Routing] Explain Dijkstra's shortest path Link State Routing (LSR) algorithm."
+    if any(w in lower for w in ["distance vector", "dvr", "bellman", "count-to-infinity", "count to infinity"]):
+        return "[Topic: Distance Vector Routing] Detail Bellman-Ford routing updates and the count-to-infinity problem."
+    if any(w in lower for w in ["arq", "sliding window", "go-back-n", "selective repeat"]):
+        return "[Topic: Sliding Window ARQ] Compare Go-Back-N and Selective Repeat ARQ flow control protocols."
+    if any(w in lower for w in ["csma", "collision", "ethernet", "carrier sense"]):
+        return "[Topic: CSMA/CD Access Control] Explain Carrier Sense Multiple Access with Collision Detection in Ethernet."
+    if any(w in lower for w in ["ipv4", "ipv6", "packet header"]):
+        return "[Topic: IP Header Architecture] Compare IPv4 and IPv6 packet header formats and key structural improvements."
+    if any(w in lower for w in ["http", "multiplexing", "pipelining", "www"]):
+        return "[Topic: Application Layer Protocols] Write short notes on HTTP/2 multiplexing vs HTTP/1.1 pipelining."
+        
+    # Operating Systems Topics
+    if any(w in lower for w in ["semaphore", "mutex", "critical section", "synchronization"]):
+        return "[Topic: Process Synchronization] Define binary semaphores and solve the critical section synchronization problem."
+    if any(w in lower for w in ["deadlock", "banker", "coffman"]):
+        return "[Topic: Deadlock Management] State the 4 Coffman conditions for deadlock and explain Banker's algorithm."
+    if any(w in lower for w in ["page replacement", "lru", "fifo", "optimal page"]):
+        return "[Topic: Page Replacement Policies] Compare FIFO, LRU, and Optimal virtual memory page replacement algorithms."
+    if any(w in lower for w in ["scheduling", "round robin", "sjf", "fcfs"]):
+        return "[Topic: CPU Scheduling] Explain preemptive vs. non-preemptive CPU scheduling algorithms with Gantt charts."
+        
+    # DAA / Algorithms Topics
+    if any(w in lower for w in ["strassen", "matrix multi"]):
+        return "[Topic: Strassen's Matrix Multiplication] Derive the recurrence relation and time complexity of Strassen's algorithm."
+    if any(w in lower for w in ["little oh", "big-o", "asymptotic", "space complexity"]):
+        return "[Topic: Asymptotic Notations] Define Big-O, Omega, Theta, and Little-o bounding notations with examples."
+    if any(w in lower for w in ["articulation", "biconnected"]):
+        return "[Topic: Graph Articulation Points] Define articulation points in biconnected components using DFS tree analysis."
+
+    return clean if len(clean) > 10 else text
+
+
 def find_or_create_cluster(
     session: Session, new_question: Question, subject: str, threshold: float = 0.82
 ) -> int:
+    # Topic-First Normalization
+    normalized_title = normalize_question_to_topic(new_question.question_text, subject)
+    new_question.question_text = normalized_title
     q_embedding = new_question.get_embedding()
     if not q_embedding:
         q_embedding = embed_text(new_question.question_text)

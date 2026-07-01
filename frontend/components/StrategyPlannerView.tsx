@@ -33,7 +33,7 @@ export const StrategyPlannerView: React.FC<StrategyPlannerViewProps> = ({
         must_study: [
           {
             cluster_id: 1,
-            text: "Explain the working of TCP 3-way handshake with sequence flowchart.",
+            text: "[Topic: TCP Connection Handshake] Explain the working of TCP 3-way handshake with sequence flowchart.",
             unit: 2,
             marks: 10,
             repetition_count: 6,
@@ -46,7 +46,7 @@ export const StrategyPlannerView: React.FC<StrategyPlannerViewProps> = ({
           },
           {
             cluster_id: 2,
-            text: "Explain Distance Vector Routing algorithm and detail the count-to-infinity problem.",
+            text: "[Topic: Distance Vector Routing] Explain Distance Vector Routing algorithm and detail the count-to-infinity problem.",
             unit: 4,
             marks: 10,
             repetition_count: 4,
@@ -61,7 +61,7 @@ export const StrategyPlannerView: React.FC<StrategyPlannerViewProps> = ({
         optional: [
           {
             cluster_id: 3,
-            text: "Compare IPv4 and IPv6 packet header formats and key improvements.",
+            text: "[Topic: IP Header Architecture] Compare IPv4 and IPv6 packet header formats and key improvements.",
             unit: 3,
             marks: 5,
             repetition_count: 2,
@@ -76,7 +76,7 @@ export const StrategyPlannerView: React.FC<StrategyPlannerViewProps> = ({
         skip: [
           {
             cluster_id: 4,
-            text: "Write short notes on HTTP/2 multiplexing vs HTTP/1.1 pipelining.",
+            text: "[Topic: Application Layer Protocols] Write short notes on HTTP/2 multiplexing vs HTTP/1.1 pipelining.",
             unit: 5,
             marks: 5,
             repetition_count: 1,

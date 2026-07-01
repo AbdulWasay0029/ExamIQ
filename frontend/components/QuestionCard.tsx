@@ -66,6 +66,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   };
 
   const isHighRep = question.repetition_count >= 3;
+  const topicMatch = question.canonical_text.match(/^\[Topic:\s*(.*?)\]\s*(.*)$/i);
+  const topicName = topicMatch ? topicMatch[1] : null;
+  const questionBody = topicMatch ? topicMatch[2] : question.canonical_text;
 
   return (
     <div
@@ -120,10 +123,18 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         </span>
       </div>
 
-      {/* Question Text */}
-      <p className="text-base sm:text-lg font-bold text-white leading-relaxed mb-5">
-        {question.canonical_text}
-      </p>
+      {/* Topic Pillar & Question Text */}
+      <div className="mb-5">
+        {topicName && (
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-3 rounded-xl bg-gradient-to-r from-[#06b6d4]/20 via-[#6366f1]/20 to-[#3b82f6]/20 border border-[#06b6d4]/50 text-[#06b6d4] text-xs font-black uppercase tracking-wider shadow-sm">
+            <Award className="w-4 h-4 text-[#06b6d4]" />
+            <span>TOPIC PILLAR: {topicName}</span>
+          </div>
+        )}
+        <p className="text-base sm:text-lg font-bold text-white leading-relaxed">
+          {questionBody}
+        </p>
+      </div>
 
       {/* Generate Answer CTA */}
       <div className="flex flex-wrap items-center gap-3">

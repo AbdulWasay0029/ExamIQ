@@ -43,10 +43,40 @@ export default function Home() {
       } catch (e) {
         console.error(e);
         toast.error("Backend offline. Using offline dataset.");
-        setQuestions([
+        const osTopics = [
+          {
+            cluster_id: 201,
+            canonical_text: "[Topic: Process Synchronization] Define binary semaphores and solve the critical section synchronization problem.",
+            unit: 2,
+            marks: 10,
+            repetition_count: 6,
+            teacher_flagged: true,
+            priority_score: 36.5,
+          },
+          {
+            cluster_id: 202,
+            canonical_text: "[Topic: Deadlock Management] State the 4 Coffman conditions for deadlock and explain Banker's algorithm.",
+            unit: 3,
+            marks: 10,
+            repetition_count: 5,
+            teacher_flagged: true,
+            priority_score: 31.0,
+          },
+          {
+            cluster_id: 203,
+            canonical_text: "[Topic: Page Replacement Policies] Compare FIFO, LRU, and Optimal virtual memory page replacement algorithms.",
+            unit: 4,
+            marks: 10,
+            repetition_count: 5,
+            teacher_flagged: false,
+            priority_score: 25.0,
+          },
+        ];
+
+        const cnTopics = [
           {
             cluster_id: 101,
-            canonical_text: "Explain the working of TCP 3-way handshake with a neat diagram.",
+            canonical_text: "[Topic: TCP Connection Handshake] Explain the 3-way handshake mechanism and sequence synchronization.",
             unit: 2,
             marks: 10,
             repetition_count: 6,
@@ -55,14 +85,25 @@ export default function Home() {
           },
           {
             cluster_id: 102,
-            canonical_text: "Differentiate between OSI and TCP/IP reference models with layered architecture.",
+            canonical_text: "[Topic: OSI 7-Layer Model] Detail the OSI reference model architecture and individual layer responsibilities.",
             unit: 1,
             marks: 10,
             repetition_count: 5,
             teacher_flagged: false,
             priority_score: 25.0,
           },
-        ]);
+          {
+            cluster_id: 103,
+            canonical_text: "[Topic: Subnetting & CIDR] Illustrate Classless Inter-Domain Routing (CIDR) address blocks and subnet masking.",
+            unit: 3,
+            marks: 10,
+            repetition_count: 5,
+            teacher_flagged: true,
+            priority_score: 28.0,
+          },
+        ];
+
+        setQuestions(subj.toLowerCase().includes("operating") ? osTopics : cnTopics);
       }
     }
   };
@@ -83,7 +124,7 @@ export default function Home() {
       setQuestions([
         {
           cluster_id: 1,
-          canonical_text: "Explain the working of TCP 3-way handshake with a neat diagram.",
+          canonical_text: "[Topic: TCP Connection Handshake] Explain the 3-way handshake mechanism and sequence synchronization.",
           unit: 2,
           marks: 10,
           repetition_count: 6,
@@ -92,7 +133,7 @@ export default function Home() {
         },
         {
           cluster_id: 3,
-          canonical_text: "Differentiate between OSI and TCP/IP reference models with layered architecture.",
+          canonical_text: "[Topic: OSI 7-Layer Model] Detail the OSI reference model architecture and individual layer responsibilities.",
           unit: 1,
           marks: 10,
           repetition_count: 4,
@@ -101,7 +142,7 @@ export default function Home() {
         },
         {
           cluster_id: 2,
-          canonical_text: "What is CIDR? Explain IP subnetting and classless routing with an example.",
+          canonical_text: "[Topic: Subnetting & CIDR] Illustrate Classless Inter-Domain Routing (CIDR) address blocks and subnet masking.",
           unit: 3,
           marks: 10,
           repetition_count: 5,
