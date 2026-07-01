@@ -95,7 +95,11 @@ class NotesChunk(SQLModel, table=True):
 
 
 # Engine initialization
-DATABASE_URL = "sqlite:///./examiq.db"
+import os
+if os.environ.get("VERCEL"):
+    DATABASE_URL = "sqlite:////tmp/examiq.db"
+else:
+    DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./examiq.db")
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 
