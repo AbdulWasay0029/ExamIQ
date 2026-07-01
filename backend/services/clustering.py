@@ -16,6 +16,7 @@ except Exception as e:
 
 from sklearn.feature_extraction.text import HashingVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from services.llm import llm_service
 
 # Hashing vectorizer produces fixed-size deterministic embeddings without needing fitting
 hashing_vectorizer = HashingVectorizer(n_features=128, norm="l2", analyzer="char_wb", ngram_range=(3, 5))
@@ -79,7 +80,17 @@ def find_or_create_cluster(
 
     q_type = detect_question_type(new_question.question_text)
 
-    if best_match and best_score >= threshold:
+    is_matched = False
+    if best_match:
+        if best_score >= threshold:
+            is_matched = True
+        elif 0.45 <= best_score < threshold:
+            print(f"[Clustering] Ambiguous score {best_score:.2f} for '{new_question.question_text[:30]}...'. Calling Gemini verification...")
+            if llm_service.verify_semantic_match(new_question.question_text, best_match.canonical_text):
+                is_matched = True
+                print("[Clustering] Gemini verified semantic match!")
+
+    if best_match and is_matched:
         best_match.repetition_count += 1
         if is_teacher:
             best_match.teacher_flagged = True

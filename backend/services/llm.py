@@ -161,6 +161,20 @@ class LLMService:
             except Exception as e:
                 print(f"[LLMService] Answer generation failed: {e}")
 
+    def verify_semantic_match(self, q1: str, q2: str) -> bool:
+        """Verifies if two differently worded exam questions ask for the exact same concept/answer."""
+        if self.gemini_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=self.gemini_key)
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                prompt = f"Are these two university exam questions asking about the exact same concept or requiring the same answer? Reply ONLY with 'YES' or 'NO'.\nQ1: {q1}\nQ2: {q2}"
+                res = model.generate_content(prompt)
+                return "yes" in res.text.lower()
+            except Exception:
+                pass
+        return False
+
         # Intelligent Markdown Template Generation
         notes_context = (
             "\n".join([f"> *{chunk}*" for chunk in notes_chunks[:2]])
